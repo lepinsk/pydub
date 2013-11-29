@@ -495,6 +495,37 @@ class AudioSegment(object):
         output.seek(0)
         return seg1._spawn(data=output)
 
+    def pan(self, pan=0):
+        """
+        Pan this audio segment.
+
+        pan (float):
+            pan value to set, from -1 (all left) to +1 (all right), with 0 being a centre-pan
+        """
+        
+        if pan < 0:
+            lmult = 1.0
+            rmult = 1 + pan
+        elif pan > 0:
+            lmult = 1 - pan
+            rmult = 1.0
+        else:
+            lmult = 1.0
+            rmult = 1.0
+
+        channels = 2
+
+        if self.channels == 1:
+            frame_width = self.frame_width * 2
+            stereodata = audioop.tostereo(self._data, self.sample_width, lmult, rmult)
+        else:
+            frame_width = self.frame_width
+            monodata = audioop.tomono(self._data, self.sample_width, 1, 1)
+            stereodata = audioop.tostereo(monodata, self.sample_width, lmult, rmult)
+        
+        return self._spawn(stereodata, overrides={'channels': channels,
+                                                      'frame_width': frame_width})
+
     def fade(self, to_gain=0, from_gain=0, start=None, end=None,
              duration=None):
         """
