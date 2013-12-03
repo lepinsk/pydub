@@ -201,6 +201,19 @@ class AudioSegment(object):
     def empty(cls):
         return cls(b'', metadata={"channels": 1, "sample_width": 1, "frame_rate": 1, "frame_width": 1})
 
+    @classmethod 
+    def silent(cls, length=1000, overrides={}):
+        _metadata = {
+            'sample_width': 2,
+            'frame_rate': 44100,
+            'frame_width': 2,
+            'channels': 1
+        }
+        _metadata.update(overrides)
+        data_inner = (b' ') * int(length / 1000) * _metadata["frame_rate"] * _metadata["frame_width"]
+        empty_segment = cls(data_inner, metadata=_metadata)        
+        return empty_segment.apply_gain(-100)                   #kind of a messy hack here; but it kills pops in the output data :/
+
     @classmethod
     def from_file(cls, file, format=None):
         file = _fd_or_path_or_tempfile(file, 'rb', tempfile=False)
