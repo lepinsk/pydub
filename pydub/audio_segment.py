@@ -246,6 +246,11 @@ class AudioSegment(object):
             output.name
         ]
 
+        print "**DEBUG from_file; convertion_command: %s" % convertion_command
+
+        print "**DEBUG TEST CALLING FFMPEG:"
+        subprocess.call('ffmpeg')
+
         subprocess.call(convertion_command, stderr=open(os.devnull))
 
         obj = cls.from_wav(output)
