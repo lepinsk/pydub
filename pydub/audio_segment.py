@@ -248,6 +248,7 @@ class AudioSegment(object):
 
         print "**DEBUG from_file; convertion_command: %s" % convertion_command
 
+        print "**DEBUG system PATH: %s" % os.environ['PATH']
         print "**DEBUG TEST CALLING FFMPEG:"
         subprocess.call('ffmpeg')
 
