@@ -248,6 +248,8 @@ class AudioSegment(object):
 
         subprocess.call(convertion_command, stderr=open(os.devnull))
 
+        print "** AUDISEGMENT: loading wav: %s (size %dbytes)" % (os.path.abspath(output.name), os.stat(output.name).st_size)
+
         obj = cls.from_wav(output)
 
         input_file.close()
