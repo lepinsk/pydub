@@ -6,6 +6,9 @@ from tempfile import TemporaryFile, NamedTemporaryFile
 import wave
 import audioop
 import sys
+import random
+import string
+import mmap
 
 try:
     from StringIO import StringIO
@@ -48,6 +51,15 @@ class AudioSegment(object):
     converter = get_encoder_name()  # either ffmpeg or avconv
 
     def __init__(self, data=None, *args, **kwargs):
+        #print "def __init__ called..."
+
+        """
+        filename = '/Users/theoffice/Desktop/FML/' + ''.join(random.choice(string.ascii_uppercase + string.digits) for x in range(4)) + ".heh"
+        file = open(filename, "w+")
+        os.ftruncate(file.fileno(), 1000000)
+        self._data = mmap.mmap(file.fileno(), 0)
+        """
+        
         if kwargs.get('metadata', False):
             # internal use only
             self._data = data
@@ -225,10 +237,15 @@ class AudioSegment(object):
             return cls.from_wav(file)
 
         input_file = NamedTemporaryFile(mode='wb', delete=False)
+
+        print "input_file NamedTemporaryFile: " + input_file.name
+
         input_file.write(file.read())
         input_file.flush()
 
         output = NamedTemporaryFile(mode="rb", delete=False)
+
+        print "output NamedTemporaryFile: " + output.name
 
         convertion_command = [cls.converter,
                               '-y',  # always overwrite existing files
@@ -310,6 +327,7 @@ class AudioSegment(object):
             data = out_f
         else:
             data = NamedTemporaryFile(mode="wb", delete=False)
+            print "data NamedTemporaryFile: " + data.name
 
         wave_data = wave.open(data, 'wb')
         wave_data.setnchannels(self.channels)
@@ -326,7 +344,7 @@ class AudioSegment(object):
             return out_f
 
         output = NamedTemporaryFile(mode="w+b", delete=False)
-
+        print "output NamedTemporaryFile: " + output.name
         # build converter command to export
         convertion_command = [self.converter,
                               '-y',  # always overwrite existing files
