@@ -2,7 +2,7 @@ from functools import partial
 import mimetypes
 import os
 import unittest
-from tempfile import NamedTemporaryFile, SpooledTemporaryFile
+from tempfile import NamedTemporaryFile
 
 from pydub import AudioSegment
 from pydub.utils import (
@@ -15,7 +15,6 @@ from pydub.exceptions import (
     InvalidTag,
     InvalidID3TagVersion,
     InvalidDuration,
-    TooManyMissingFrames,
 )
 
 data_dir = os.path.join(os.path.dirname(__file__), 'data')
@@ -48,22 +47,28 @@ class FileAccessTests(unittest.TestCase):
         self.assertTrue(len(seg1) > 0)
 
 
-test1 = test2 = test3 = None
+test1 = test2 = test3 = testparty = None
 
 
 class AudioSegmentTests(unittest.TestCase):
 
     def setUp(self):
-        global test1, test2, test3
+        global test1, test2, test3, testparty
         if not test1:
             test1 = AudioSegment.from_mp3(os.path.join(data_dir, 'test1.mp3'))
             test2 = AudioSegment.from_mp3(os.path.join(data_dir, 'test2.mp3'))
             test3 = AudioSegment.from_mp3(os.path.join(data_dir, 'test3.mp3'))
-        self.seg1, self.seg2, self.seg3 = test1, test2, test3
+            testparty = AudioSegment.from_mp3(
+                os.path.join(data_dir, 'party.mp3'))
+
+        self.seg1 = test1
+        self.seg2 = test2
+        self.seg3 = test3
+        self.mp3_seg_party = testparty
+
         self.ogg_file_path = os.path.join(data_dir, 'bach.ogg')
         self.mp4_file_path = os.path.join(data_dir, 'creative_common.mp4')
         self.mp3_file_path = os.path.join(data_dir, 'party.mp3')
-        self.mp3_seg_party = AudioSegment.from_mp3(os.path.join(data_dir, 'party.mp3'))
 
     def assertWithinRange(self, val, lower_bound, upper_bound):
         self.assertTrue(lower_bound < val < upper_bound,
@@ -93,10 +98,14 @@ class AudioSegmentTests(unittest.TestCase):
 
     def test_volume_with_add_sub(self):
         quieter = self.seg1 - 6
-        self.assertAlmostEqual(ratio_to_db(quieter.rms, self.seg1.rms), -6, places=2)
+        self.assertAlmostEqual(ratio_to_db(quieter.rms, self.seg1.rms),
+                               -6,
+                               places=2)
 
         louder = quieter + 2.5
-        self.assertAlmostEqual(ratio_to_db(louder.rms, quieter.rms), 2.5, places=2)
+        self.assertAlmostEqual(ratio_to_db(louder.rms, quieter.rms),
+                               2.5,
+                               places=2)
 
     def test_repeat_with_multiply(self):
         seg = self.seg1 * 3
@@ -162,28 +171,35 @@ class AudioSegmentTests(unittest.TestCase):
 
         merged = monomp3.append(stereo, crossfade=100)
         self.assertWithinTolerance(len(merged),
-                                   len(self.seg1) + len(self.seg2) - 100, tolerance=1)
+                                   len(self.seg1) + len(self.seg2) - 100,
+                                   tolerance=1)
 
     def test_export_as_mp3(self):
         seg = self.seg1
         exported_mp3 = seg.export()
         seg_exported_mp3 = AudioSegment.from_mp3(exported_mp3)
 
-        self.assertWithinTolerance(len(seg_exported_mp3), len(seg), percentage=0.01)
+        self.assertWithinTolerance(len(seg_exported_mp3),
+                                   len(seg),
+                                   percentage=0.01)
 
     def test_export_as_wav(self):
         seg = self.seg1
         exported_wav = seg.export(format='wav')
         seg_exported_wav = AudioSegment.from_wav(exported_wav)
 
-        self.assertWithinTolerance(len(seg_exported_wav), len(seg), percentage=0.01)
+        self.assertWithinTolerance(len(seg_exported_wav),
+                                   len(seg),
+                                   percentage=0.01)
 
     def test_export_as_ogg(self):
         seg = self.seg1
         exported_ogg = seg.export(format='ogg')
         seg_exported_ogg = AudioSegment.from_ogg(exported_ogg)
 
-        self.assertWithinTolerance(len(seg_exported_ogg), len(seg), percentage=0.01)
+        self.assertWithinTolerance(len(seg_exported_ogg),
+                                   len(seg),
+                                   percentage=0.01)
 
     def test_export_forced_codec(self):
         seg = self.seg1 + self.seg2
@@ -191,7 +207,9 @@ class AudioSegmentTests(unittest.TestCase):
         with NamedTemporaryFile('w+b', suffix='.ogg') as tmp_file:
             seg.export(tmp_file.name, 'ogg', codec='libvorbis')
             exported = AudioSegment.from_ogg(tmp_file.name)
-            self.assertWithinTolerance(len(exported), len(seg), percentage=0.01)
+            self.assertWithinTolerance(len(exported),
+                                       len(seg),
+                                       percentage=0.01)
 
     def test_fades(self):
         seg = self.seg1[:10000]
@@ -247,7 +265,10 @@ class AudioSegmentTests(unittest.TestCase):
         self.assertEqual(len(normalized), len(seg))
         self.assertTrue(normalized.rms > seg.rms)
         self.assertWithinTolerance(
-            normalized.max, normalized.max_possible_amplitude, percentage=0.0001)
+            normalized.max,
+            normalized.max_possible_amplitude,
+            percentage=0.0001
+        )
 
     def test_for_accidental_shortening(self):
         seg = self.mp3_seg_party
@@ -261,8 +282,8 @@ class AudioSegmentTests(unittest.TestCase):
             self.assertFalse(len(tmp_seg) < len(seg))
 
     def test_formats(self):
-        seg_m4a = AudioSegment.from_file(os.path.join(data_dir,
-                                                      'format_test.m4a'), "m4a")
+        seg_m4a = AudioSegment.from_file(
+            os.path.join(data_dir, 'format_test.m4a'), "m4a")
         self.assertTrue(len(seg_m4a))
 
     def test_equal_and_not_equal(self):
@@ -280,14 +301,16 @@ class AudioSegmentTests(unittest.TestCase):
 
     def test_autodetect_format(self):
         try:
-            AudioSegment.from_file(os.path.join(data_dir, 'wrong_extension.aac'), 'aac')
+            AudioSegment.from_file(
+                os.path.join(data_dir, 'wrong_extension.aac'), 'aac')
         except EOFError:
             pass
-        except Exception as e:
+        except Exception:
             self.fail('Expected Exception is not thrown')
 
         # Trying to auto detect input file format
-        aac_file = AudioSegment.from_file(os.path.join(data_dir, 'wrong_extension.aac'))
+        aac_file = AudioSegment.from_file(
+            os.path.join(data_dir, 'wrong_extension.aac'))
         self.assertEqual(int(aac_file.duration_seconds), 9)
 
     def test_export_ogg_as_mp3(self):
@@ -350,8 +373,12 @@ class AudioSegmentTests(unittest.TestCase):
         tags = {'artist': 'Artist', 'title': 'Title'}
         with NamedTemporaryFile('w+b', suffix='.mp3') as tmp_mp3_file:
             func = partial(
-                AudioSegment.from_file(self.mp4_file_path).export, tmp_mp3_file,
-                format="mp3", tags=tags, id3v2_version='BAD VERSION')
+                AudioSegment.from_file(self.mp4_file_path).export,
+                tmp_mp3_file,
+                format="mp3",
+                tags=tags,
+                id3v2_version='BAD VERSION'
+            )
             self.assertRaises(InvalidID3TagVersion, func)
 
     def test_export_mp3_with_tags(self):
@@ -371,10 +398,31 @@ class AudioSegmentTests(unittest.TestCase):
         func = partial(seg.fade, start=1, end=1, duration=1)
         self.assertRaises(TypeError, func)
 
+    def test_silent(self):
+        seg = AudioSegment.silent(len(self.seg1))
+        self.assertEqual(len(self.seg1), len(seg))
+        self.assertEqual(seg.rms, 0)
+        self.assertEqual(seg.frame_width, 2)
+
+        seg_8bit = seg.set_sample_width(1)
+        self.assertEqual(seg_8bit.sample_width, 1)
+        self.assertEqual(seg_8bit.frame_width, 1)
+        self.assertEqual(seg_8bit.rms, 0)
+
+        seg *= self.seg1
+        self.assertEqual(seg.rms, self.seg1.rms)
+        self.assertEqual(len(seg), len(self.seg1))
+        self.assertEqual(seg.frame_width, self.seg1.frame_width)
+        self.assertEqual(seg.frame_rate, self.seg1.frame_rate)
+
     def test_fade_raises_exception_when_duration_is_negative(self):
         seg = self.seg1
-        func = partial(
-            seg.fade, to_gain=1, from_gain=1, start=None, end=None, duration=-1)
+        func = partial(seg.fade,
+                       to_gain=1,
+                       from_gain=1,
+                       start=None,
+                       end=None,
+                       duration=-1)
         self.assertRaises(InvalidDuration, func)
 
     def test_make_chunks(self):
@@ -395,6 +443,35 @@ class AudioSegmentTests(unittest.TestCase):
 
         self.assertWithinTolerance(
             len(self.seg1) / 2, len(speedup_seg), percentage=0.01)
+
+    def test_dBFS(self):
+        seg_8bit = self.seg1.set_sample_width(1)
+        self.assertWithinTolerance(seg_8bit.dBFS, -8.88, tolerance=0.01)
+        self.assertWithinTolerance(self.seg1.dBFS, -8.88, tolerance=0.01)
+        self.assertWithinTolerance(self.seg2.dBFS, -10.39, tolerance=0.01)
+        self.assertWithinTolerance(self.seg3.dBFS, -6.47, tolerance=0.01)
+
+    def test_compress(self):
+        compressed = self.seg1.compress_dynamic_range()
+        self.assertWithinTolerance(self.seg1.dBFS - compressed.dBFS,
+                                   10.0,
+                                   tolerance=10.0)
+
+        # Highest peak should be lower
+        self.assertTrue(compressed.max < self.seg1.max)
+
+        # average volume should be reduced
+        self.assertTrue(compressed.rms < self.seg1.rms)
+
+    def test_exporting_to_ogg_uses_default_codec_when_codec_param_is_none(self):
+        with NamedTemporaryFile('w+b', suffix='.ogg') as tmp_ogg_file:
+            AudioSegment.from_file(self.mp4_file_path).export(tmp_ogg_file, format="ogg")
+
+            info = mediainfo(filepath=tmp_ogg_file.name)
+
+        self.assertEqual(info["codec_name"], "vorbis")
+        self.assertEqual(info["format_name"], "ogg")
+
 
 if __name__ == "__main__":
     import sys
