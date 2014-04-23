@@ -111,7 +111,8 @@ def strip_silence(seg, silence_len=1000, silence_thresh=-20):
 @register_pydub_effect
 def noise_gate(seg, silence_len=1000, silence_thresh=-20, crossfade_time=500):
     silence_thresh = seg.rms * db_to_float(silence_thresh)
-    
+    seg_duration_ms = seg.duration_seconds*1000
+
     # find silence and add start and end indicies to the to_cut list
     to_cut = []
     silence_start = None
@@ -131,17 +132,33 @@ def noise_gate(seg, silence_len=1000, silence_thresh=-20, crossfade_time=500):
     
     crossfade_buffer = crossfade_time / 2
 
+    #combine gate regions separated by less than our crossfade length
+    i = 0
+    while i < (len(to_cut) - 1):
+        cstart = to_cut[i][0]
+        cend = to_cut[i][1]
+        cstart_next = to_cut[i+1][0]
+        cend_next = to_cut[i+1][1]
+        if (cstart_next - cend) < crossfade_time:
+            to_cut.pop(i+1)
+            to_cut.pop(i)
+            insert_array = [cstart, cend_next]
+            to_cut.insert(i, insert_array)
+        i = i+1
+
     for cstart, cend in to_cut:
-        if cstart == 0:                                 #start cut
+        if cstart == 0 or (cstart - crossfade_buffer) < 0:                                              #start cut
+            cstart = 0
             seg_front = seg[:cend + crossfade_buffer] - 120
             seg_back = seg[cend - crossfade_buffer:]
             seg = seg_front.append(seg_back, crossfade=crossfade_time)
-        elif cend == (seg.duration_seconds * 1000):     #end cut
+        elif cend == (seg.duration_seconds * 1000) or (cend + crossfade_buffer) > seg_duration_ms:      #end cut
+            cend = seg_duration_ms
             seg_front = seg[:cstart + crossfade_buffer]
             seg_back = seg[cstart - crossfade_buffer:] - 120
             seg = seg_front.append(seg_back, crossfade=crossfade_time)
-        else:                                           #middle cut
-            seg_front = seg[:cstart +crossfade_buffer]
+        else:                                                                                           #middle cut
+            seg_front = seg[:cstart + crossfade_buffer]
             seg_middle = seg[cstart - crossfade_buffer:cend + crossfade_buffer] - 120
             seg_back = seg[cend - crossfade_buffer:]
             seg = seg_front.append(seg_middle, crossfade=crossfade_time).append(seg_back, crossfade=crossfade_time)
