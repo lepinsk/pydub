@@ -109,6 +109,46 @@ def strip_silence(seg, silence_len=1000, silence_thresh=-20):
     return seg
 
 @register_pydub_effect
+def noise_gate(seg, silence_len=1000, silence_thresh=-20, crossfade_time=500):
+    silence_thresh = seg.rms * db_to_float(silence_thresh)
+    
+    # find silence and add start and end indicies to the to_cut list
+    to_cut = []
+    silence_start = None
+    for i, sample in enumerate(seg):
+        if sample.rms < silence_thresh:
+            if silence_start is None:
+                silence_start = i
+            continue
+            
+        if silence_start is None:
+            continue
+            
+        if i - silence_start > silence_len:
+            to_cut.append([silence_start, i-1])
+        
+        silence_start = None
+    
+    crossfade_buffer = crossfade_time / 2
+
+    for cstart, cend in to_cut:
+        if cstart == 0:                                 #start cut
+            seg_front = seg[:cend + crossfade_buffer] - 120
+            seg_back = seg[cend - crossfade_buffer:]
+            seg = seg_front.append(seg_back, crossfade=crossfade_time)
+        elif cend == (seg.duration_seconds * 1000):     #end cut
+            seg_front = seg[:cstart + crossfade_buffer]
+            seg_back = seg[cstart - crossfade_buffer:] - 120
+            seg = seg_front.append(seg_back, crossfade=crossfade_time)
+        else:                                           #middle cut
+            seg_front = seg[:cstart +crossfade_buffer]
+            seg_middle = seg[cstart - crossfade_buffer:cend + crossfade_buffer] - 120
+            seg_back = seg[cend - crossfade_buffer:]
+            seg = seg_front.append(seg_middle, crossfade=crossfade_time).append(seg_back, crossfade=crossfade_time)
+
+    return seg
+
+@register_pydub_effect
 def compress_dynamic_range(seg, threshold=-20.0, ratio=4.0, attack=5.0, release=50.0):
     """
     Keyword Arguments:
