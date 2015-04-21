@@ -307,6 +307,19 @@ class AudioSegment(object):
             output.name
         ]
 
+        fileName = file.name.encode('ascii','ignore')
+
+        if fileName.endswith('.ogg'):
+            # an ugly hack for systems where ffmpeg can't handle ogg
+            # we use opusdec instead; subprocess.call seems to mess up
+            # the header, so we force it
+            convertion_command = [
+            "opusdec",
+            "--force-wav",
+            input_file.name,
+            output.name
+            ]
+
         subprocess.call(convertion_command, stderr=open(os.devnull))
 
         obj = cls.from_wav(output)
