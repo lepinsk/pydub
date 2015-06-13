@@ -7,9 +7,57 @@ from .utils import (
     audioop,
 )
 from .exceptions import TooManyMissingFrames
+from tempfile import NamedTemporaryFile
+import subprocess
+import os
 
 if sys.version_info >= (3, 0):
     xrange = range
+
+@register_pydub_effect
+def noise_reduction(seg, sample_start=0, sample_end=1000, sensitivity=0.2):
+    """
+    noise_reduction will remove consistent background noise from a recording
+        given a sample region which is expected to be silent (but includes the
+        background noise)
+
+    sample_start: the time (in ms) at which we should start the sample period
+    sample_end: the time (in ms) at which we end the sample period
+    sensitivity: (from 0 to 1) how aggresive to be with the noise reduction
+    """
+
+    sample_section = seg[sample_start:sample_end]
+    sample_section_file = NamedTemporaryFile(mode='wb', delete=False)
+    sample_section.export(sample_section_file.name, format="wav")
+    print "we wrote out %f to %f in %s" % (sample_start, sample_end, sample_section_file.name)
+    
+    noise_profile_file = NamedTemporaryFile(mode='wb', delete=False)
+    noise_profile_command = ['sox', sample_section_file.name, '-n', 'noiseprof', noise_profile_file.name]
+    subprocess.call(noise_profile_command, stderr=open(os.devnull))
+    print "we wrote a noise profile to %s" % (noise_profile_file.name)
+
+    noisy_file = NamedTemporaryFile(mode='wb', suffix=".wav", delete=False)
+    seg.export(noisy_file.name, format="wav")
+    print "we wrote out our original file to %s" % (noisy_file.name)
+    denoised_file = NamedTemporaryFile(mode='wb', suffix=".wav", delete=False)
+    print "running noise reduction"
+    noise_reduction_command = ['sox', noisy_file.name, denoised_file.name, 'noisered', noise_profile_file.name, '0.2']
+    print noise_reduction_command
+    subprocess.call(noise_reduction_command, stderr=open(os.devnull))
+    print "noise reduced file: %s" % (denoised_file.name)
+
+    # to delete
+    os.remove(sample_section_file.name)
+    os.remove(noise_profile_file.name)
+    os.remove(noisy_file.name)
+
+    denoised_segment = seg.from_file(denoised_file.name)
+    
+    # to delete
+    os.remove(denoised_file.name)
+
+    return denoised_segment
+
 
 @register_pydub_effect
 def normalize(seg, headroom=0.1):
