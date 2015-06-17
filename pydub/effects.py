@@ -51,17 +51,27 @@ def noise_reduction(seg, sample_start=0, sample_end=1000, sensitivity=0.2):
     return denoised_segment
 
 @register_pydub_effect
-def sox_compand(seg):
+def sox_compand(seg, attack=0.3, decay=1, transferFn="6:-70,-60,-20", gain=-5, initialLevel=-90, delay=0.2):
     """
-    right now a very simple wrapper around sox's compand
-
-    no params for the time being...
+    right now a very simple wrapper around sox's compand function
     """
     uncompressed_file = NamedTemporaryFile(mode='wb', suffix=".wav", delete=False)
     seg.export(uncompressed_file.name, format="wav")
 
     compressed_file = NamedTemporaryFile(mode='wb', suffix=".wav", delete=False)
-    compression_command = ['sox', uncompressed_file.name, compressed_file.name, "compand", "0.3,1", "6:-70,-60,-20", "-5", "-90", "0.2"];
+    
+
+
+    compression_command = [ 'sox', 
+                            uncompressed_file.name,             # infile
+                            compressed_file.name,               # outfile
+                            "compand", 
+                            str(attack) + "," + str(decay),     # attack,decay
+                            transferFn,                         # transfer function
+                            str(gain),                          # gain
+                            str(initialLevel),                  # initial level
+                            str(delay) ];                       # delay
+    
     subprocess.call(compression_command, stderr=open(os.devnull))
 
     os.remove(uncompressed_file.name)
