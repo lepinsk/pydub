@@ -54,6 +54,8 @@ def noise_reduction(seg, sample_start=0, sample_end=1000, sensitivity=0.2):
 def sox_compand(seg, attack=0.3, decay=1, transferFn="6:-70,-60,-20", gain=-5, initialLevel=-90, delay=0.2):
     """
     right now a very simple wrapper around sox's compand function
+
+    NB: this is all hard-coded to presume mono input; the attack/decay param pair is set up for mono
     """
     uncompressed_file = NamedTemporaryFile(mode='wb', suffix=".wav", delete=False)
     seg.export(uncompressed_file.name, format="wav")
