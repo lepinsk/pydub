@@ -15,16 +15,76 @@ if sys.version_info >= (3, 0):
     xrange = range
 
 @register_pydub_effect
-def noise_reduction(seg, sample_start=0, sample_end=1000, sensitivity=0.2):
+def noise_reduction(seg, auto_sample=False, sample_start=0, sample_end=1000, sensitivity=0.2):
     """
     noise_reduction will remove consistent background noise from a recording
         given a sample region which is expected to be silent (but includes the
         background noise)
 
+    auto_sample: attempt to determine the sample region automatically
+                 (this overrides sample_start and sample_end, even if set)
     sample_start: the time (in ms) at which we should start the sample period
     sample_end: the time (in ms) at which we end the sample period
     sensitivity: (from 0 to 1) how aggresive to be with the noise reduction
     """
+
+    if auto_sample:
+        print "noise_reduction: automatically determining sample region"
+        print "getting rms"
+
+        full_rms = seg.rms
+
+        nothing_found = True
+
+        print "full file RMS: %d" % (full_rms)
+
+        search_floor = 0
+        search_step = 60
+        
+        while nothing_found:
+            search_limit = search_floor + search_step
+            search_limit = min(search_limit, int(len(seg) / 1000))
+
+            if (search_limit <= search_floor):
+                print "woah, big problems. can't seem to find a decent sample, so returning as-is"
+                return seg
+
+            search_region_rms = seg[search_floor*1000:search_limit*1000].rms
+
+            compare_rms = max(full_rms, search_region_rms)
+
+            best_slice = 0
+            best_slice_rms = compare_rms
+
+            print "search region RMS: %d" % (search_region_rms)
+
+            print ""
+            print "searching from %ds to %ds" % (search_floor, search_limit)
+
+            for x in range (search_floor, search_limit):
+                x2 = x+1
+                lhs = x * 1000
+                rhs = (x2) * 1000
+                audioseg = seg[lhs:rhs]
+                audioseg_rms = audioseg.rms
+                if (audioseg_rms < best_slice_rms):
+                    best_slice = x
+                    best_slice_rms = audioseg_rms
+
+            print ""
+            print "the best slice we found was at %ds, with an rms value of %d" % (best_slice, best_slice_rms)
+            
+            if (best_slice_rms < (compare_rms / 3)):
+                nothing_found = False
+                sample_start = best_slice * 1000
+                sample_end = sample_start + 1000
+
+                print "setting sample_start=%d, sample_end=%d" % (sample_start, sample_end)                
+            else :
+                print "hmm, didn't find good silence in the search region"
+                search_floor = search_limit
+
+
 
     sample_section = seg[sample_start:sample_end]
     sample_section_file = NamedTemporaryFile(mode='wb', delete=False)
