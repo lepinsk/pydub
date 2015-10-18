@@ -104,7 +104,7 @@ def noise_reduction(seg, auto_sample=False, sample_start=0, sample_end=1000, sen
     os.remove(noise_profile_file.name)
     os.remove(noisy_file.name)
 
-    denoised_segment = seg.from_file(denoised_file.name)
+    denoised_segment = seg.from_wav(denoised_file.name)
     
     os.remove(denoised_file.name)
 
