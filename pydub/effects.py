@@ -138,7 +138,7 @@ def sox_compand(seg, attack=0.3, decay=1, transferFn="6:-70,-60,-20", gain=-5, i
 
     os.remove(uncompressed_file.name)
 
-    compressed_segment = seg.from_file(compressed_file.name)
+    compressed_segment = seg.from_wav(compressed_file.name)
 
     os.remove(compressed_file.name)
 
